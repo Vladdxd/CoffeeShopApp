@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  FlatList,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -29,6 +30,13 @@ const getCategories = (list: ICoffee[]): string[] => {
   return categories;
 };
 
+const getSortedCoffee = (list: ICoffee[], currentCategory: string) => {
+  if (currentCategory === 'All') {
+    return list;
+  }
+  return list.filter(item => item.name === currentCategory);
+};
+
 const HomeScreen = () => {
   const CoffeeList = useStore((state: any) => state.CoffeeList);
   const BeanList = useStore((state: any) => state.BeanList);
@@ -40,7 +48,20 @@ const HomeScreen = () => {
     index: 0,
     category: categories[0],
   });
-  const cateforyRef = React.useRef<ScrollView>(null);
+  const [sortedCoffee, setSortedCoffee] = React.useState<ICoffee[]>(() =>
+    getSortedCoffee(CoffeeList, currentCategory.category),
+  );
+  const categoryRef = React.useRef<FlatList>(null);
+
+  console.log(sortedCoffee.length);
+
+  const scrollToSelectedCategory = (index: number) => {
+    categoryRef.current!.scrollToIndex({
+      index,
+      animated: true,
+      viewPosition: 0.5,
+    });
+  };
 
   return (
     <View style={styles.ScreenContainer}>
@@ -77,18 +98,21 @@ const HomeScreen = () => {
 
         {/* Category Scroller */}
 
-        <ScrollView
-          // ref={cateforyRef}
-          // onLayout={() =>
-          //   // cateforyRef.current?.scrollTo({x: 0, y: 0, animated: true})
-          // }
+        <FlatList
+          data={categories}
+          ref={categoryRef}
           horizontal={true}
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoryScroller}>
-          {categories.map((category: string, index) => (
+          contentContainerStyle={styles.categoryScroller}
+          renderItem={({item, index}: {item: string; index: number}) => (
             <View style={styles.categoryItemContainer} key={index.toString()}>
               <TouchableOpacity
-                onPress={() => setCurrentCategory({index, category})}>
+                style={styles.categoryItem}
+                onPress={() => {
+                  setCurrentCategory({index, category: item});
+                  setSortedCoffee([...getSortedCoffee(CoffeeList, item)]);
+                  scrollToSelectedCategory(index);
+                }}>
                 <Text
                   style={[
                     styles.categoryText,
@@ -99,15 +123,25 @@ const HomeScreen = () => {
                           : COLORS.primaryLightGreyHex,
                     },
                   ]}>
-                  {category}
+                  {item}
                 </Text>
                 {currentCategory.index === index ? (
                   <View style={styles.activeCategory}></View>
                 ) : null}
               </TouchableOpacity>
             </View>
-          ))}
-        </ScrollView>
+          )}
+        />
+
+        {/* Coffee List */}
+        <FlatList
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          data={sortedCoffee}
+          contentContainerStyle={styles.coffeeList}
+          keyExtractor={item => item.id}
+          renderItem={({item}) => <Text>{item.name}</Text>}
+        />
       </ScrollView>
     </View>
   );
@@ -156,9 +190,12 @@ const styles = StyleSheet.create({
     // marginRight: SPACING.space_20,
     paddingHorizontal: SPACING.space_15,
   },
+  categoryItem: {
+    alignItems: 'center',
+  },
   categoryText: {
-    fontSize: FONTSIZE.size_14,
-    lineHeight: 20,
+    fontSize: FONTSIZE.size_16,
+    lineHeight: SPACING.space_20,
     fontFamily: FONTFAMILY.poppins_semibold,
   },
   activeCategory: {
@@ -169,6 +206,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginTop: SPACING.space_2,
   },
+  coffeeList: {},
 });
 
 export default HomeScreen;
