@@ -14,6 +14,7 @@ import {COLORS, FONTFAMILY, FONTSIZE, SPACING} from '../theme/theme';
 import Header from '../components/Header';
 import CustomIcon from '../components/CustomIcon';
 import {ICoffee} from '../interface/data';
+import CoffeeCard from '../components/CoffeeCard';
 
 interface TempObject {
   [key: string]: number;
@@ -30,11 +31,20 @@ const getCategories = (list: ICoffee[]): string[] => {
   return categories;
 };
 
-const getSortedCoffee = (list: ICoffee[], currentCategory: string) => {
+const getSortedCoffee = (
+  list: ICoffee[],
+  currentCategory: string,
+  searchText: string,
+) => {
   if (currentCategory === 'All') {
-    return list;
+    console.log('seacrh text', searchText.length);
+
+    return searchText.length === 0
+      ? list
+      : list.filter(item => item.name.includes(searchText));
   }
-  return list.filter(item => item.name === currentCategory);
+  const temp = list.filter(item => item.name === currentCategory);
+  return temp;
 };
 
 const HomeScreen = () => {
@@ -49,7 +59,7 @@ const HomeScreen = () => {
     category: categories[0],
   });
   const [sortedCoffee, setSortedCoffee] = React.useState<ICoffee[]>(() =>
-    getSortedCoffee(CoffeeList, currentCategory.category),
+    getSortedCoffee(CoffeeList, currentCategory.category, searchText),
   );
   const categoryRef = React.useRef<FlatList>(null);
 
@@ -75,7 +85,17 @@ const HomeScreen = () => {
 
         {/* Search Input */}
         <View style={styles.inputContainer}>
-          <TouchableOpacity onPress={() => setSearchText('')}>
+          <TouchableOpacity
+            onPress={() => {
+              setSortedCoffee(
+                getSortedCoffee(
+                  CoffeeList,
+                  currentCategory.category,
+                  searchText,
+                ),
+              );
+              // setSearchText('');
+            }}>
             <CustomIcon
               style={styles.inputIcon}
               name="search"
@@ -110,7 +130,9 @@ const HomeScreen = () => {
                 style={styles.categoryItem}
                 onPress={() => {
                   setCurrentCategory({index, category: item});
-                  setSortedCoffee([...getSortedCoffee(CoffeeList, item)]);
+                  setSortedCoffee([
+                    ...getSortedCoffee(CoffeeList, item, searchText),
+                  ]);
                   scrollToSelectedCategory(index);
                 }}>
                 <Text
@@ -134,13 +156,18 @@ const HomeScreen = () => {
         />
 
         {/* Coffee List */}
+
         <FlatList
           horizontal
           showsHorizontalScrollIndicator={false}
           data={sortedCoffee}
           contentContainerStyle={styles.coffeeList}
           keyExtractor={item => item.id}
-          renderItem={({item}) => <Text>{item.name}</Text>}
+          renderItem={({item}) => (
+            <TouchableOpacity>
+              <CoffeeCard coffee={item} />
+            </TouchableOpacity>
+          )}
         />
       </ScrollView>
     </View>
@@ -185,9 +212,12 @@ const styles = StyleSheet.create({
   categoryScroller: {
     paddingHorizontal: SPACING.space_20,
     marginBottom: SPACING.space_20,
+    // flex: 0,
+    // flexGrow: 0,
+    // flexShrink: 0,
   },
   categoryItemContainer: {
-    // marginRight: SPACING.space_20,
+    marginRight: SPACING.space_20,
     paddingHorizontal: SPACING.space_15,
   },
   categoryItem: {
@@ -203,10 +233,15 @@ const styles = StyleSheet.create({
     height: SPACING.space_10,
     borderRadius: SPACING.space_12,
     backgroundColor: COLORS.primaryOrangeHex,
-    alignSelf: 'center',
+    // alignSelf: 'center',
     marginTop: SPACING.space_2,
   },
-  coffeeList: {},
+  coffeeList: {
+    paddingHorizontal: SPACING.space_30,
+    paddingVertical: SPACING.space_20,
+    gap: SPACING.space_20,
+    backgroundColor: 'red',
+  },
 });
 
 export default HomeScreen;
