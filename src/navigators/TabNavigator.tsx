@@ -1,5 +1,11 @@
 import React from 'react';
-import {StyleSheet, Text, View} from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  Touchable,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import {COLORS} from '../theme/theme';
 import {BlurView} from '@react-native-community/blur';
@@ -8,8 +14,17 @@ import HomeScreen from '../screens/HomeScreen';
 import CartScreen from '../screens/CartScreen';
 import FavoritesScreen from '../screens/FavoritesScreen';
 import OrderHistoryScreen from '../screens/OrderHistoryScreen';
+import {NavigatorScreenParams} from '@react-navigation/native';
+import {RootStackParamList} from '../../App';
 
-const Tab = createBottomTabNavigator();
+export type RootTabParamList = {
+  Home: undefined;
+  Cart: undefined;
+  Favorites: undefined;
+  OrderHistory: undefined;
+};
+
+const Tab = createBottomTabNavigator<RootTabParamList>();
 
 const TabNavigator = () => {
   return (
@@ -19,9 +34,9 @@ const TabNavigator = () => {
         tabBarHideOnKeyboard: true,
         tabBarShowLabel: false,
         tabBarStyle: styles.tabBar,
-        // tabBarBackground: () => (
-        //   <BlurView overlayColor="" blurAmount={10} style={styles.tabBlur} />
-        // ),
+        tabBarBackground: () => (
+          <BlurView overlayColor="" blurAmount={10} style={styles.tabBlur} />
+        ),
       }}>
       <Tab.Screen
         name="Home"
@@ -90,10 +105,10 @@ const TabNavigator = () => {
 const styles = StyleSheet.create({
   tabBar: {
     height: 80,
-    // position: 'absolute',
-    backgroundColor: COLORS.primaryBlackHex,
+    position: 'absolute',
+    // backgroundColor: COLORS.primaryBlackHex,
 
-    // backgroundColor: COLORS.primaryBlackRGBA,
+    backgroundColor: COLORS.primaryBlackRGBA,
     borderTopWidth: 0,
     elevation: 0,
     borderTopColor: 'transparent',

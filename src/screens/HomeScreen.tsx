@@ -1,6 +1,8 @@
 import React from 'react';
 import {
+  ActivityIndicator,
   FlatList,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -9,92 +11,209 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import {useStore} from '../store/store';
+
+// import {useStore} from '../store/store';
 import {COLORS, FONTFAMILY, FONTSIZE, SPACING} from '../theme/theme';
+import {IProduct} from '../interface/data';
+import {Dimensions} from 'react-native';
+
 import Header from '../components/Header';
 import CustomIcon from '../components/CustomIcon';
-import {ICoffee} from '../interface/data';
-import CoffeeCard from '../components/CoffeeCard';
+import ProductCard from '../components/ProductCard';
 
-interface TempObject {
-  [key: string]: number;
-}
-const getCategories = (list: ICoffee[]): string[] => {
-  let temp: TempObject = {};
+import {
+  BottomTabScreenProps,
+  useBottomTabBarHeight,
+} from '@react-navigation/bottom-tabs';
+import {NativeStackScreenProps} from '@react-navigation/native-stack';
+import {RootStackParamList} from '../../App';
+import {RootTabParamList} from '../navigators/TabNavigator';
+import {CompositeScreenProps} from '@react-navigation/native';
+
+import type {RootState} from '../store/store';
+import {useSelector, useDispatch} from 'react-redux';
+import CategoryItem from '../components/CategoryItem';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {setCartState} from '../store/cart/cart.slice';
+import {useQuery, useQueryClient} from '@tanstack/react-query';
+import {Product} from '../services/product/product.service';
+import {setCoffee} from '../store/coffee/coffee.slice';
+import {setBeans} from '../store/beans/beans.slice';
+
+export type HomeScreenProps = CompositeScreenProps<
+  BottomTabScreenProps<RootTabParamList, 'Home'>,
+  NativeStackScreenProps<RootStackParamList>
+>;
+
+// TODO - FavoriteList, JSON, React.memo(SizeContainer)
+
+const getCategories = (list: IProduct[]): string[] => {
+  let temp: {
+    [key: string]: number;
+  } = {};
   list.forEach(item => {
     if (temp[item.name] === undefined) temp[item.name] = 1;
   });
   const categories = Object.keys(temp);
   categories.unshift('All');
-  console.log(categories);
 
   return categories;
 };
 
-const getSortedCoffee = (
-  list: ICoffee[],
-  currentCategory: string,
-  searchText: string,
-) => {
-  if (currentCategory === 'All') {
-    console.log('seacrh text', searchText.length);
-
-    return searchText.length === 0
-      ? list
-      : list.filter(item => item.name.includes(searchText));
-  }
-  const temp = list.filter(item => item.name === currentCategory);
-  return temp;
+const getSortedCoffee = (list: IProduct[], currentCategory: string) => {
+  return currentCategory === 'All'
+    ? list
+    : list.filter(item => item.name === currentCategory);
 };
 
-const HomeScreen = () => {
-  const CoffeeList = useStore((state: any) => state.CoffeeList);
-  const BeanList = useStore((state: any) => state.BeanList);
-  const [searchText, setSearchText] = React.useState<string>('');
-  const [categories, setCategories] = React.useState<string[]>(() =>
-    getCategories(CoffeeList),
+const HomeScreen: React.FC<HomeScreenProps> = ({navigation}) => {
+  const tabBarHeight = useBottomTabBarHeight();
+  const dispatch = useDispatch();
+
+  const queryClient = useQueryClient();
+
+  const CoffeeData = useQuery<IProduct[]>({
+    queryKey: ['CoffeeList'],
+    queryFn: Product.getCoffee,
+  });
+
+  const BeanData = useQuery<IProduct[]>({
+    queryKey: ['BeanList'],
+    queryFn: Product.getBeans,
+  });
+
+  const CoffeeList = useSelector((state: RootState) => state.coffeeReducer);
+
+  const cartList = useSelector(
+    (state: RootState) => state.cartReducer.cartList,
   );
+
+  const [searchText, setSearchText] = React.useState<string>('');
+  const [isSearching, setIsSearching] = React.useState<boolean>(false);
+  const [categories, setCategories] = React.useState<string[]>(() =>
+    getCategories([]),
+  );
+
   const [currentCategory, setCurrentCategory] = React.useState({
     index: 0,
     category: categories[0],
   });
-  const [sortedCoffee, setSortedCoffee] = React.useState<ICoffee[]>(() =>
-    getSortedCoffee(CoffeeList, currentCategory.category, searchText),
-  );
+
+  const [sortedCoffee, setSortedCoffee] = React.useState<IProduct[]>([]);
+
   const categoryRef = React.useRef<FlatList>(null);
+  const coffeeRef = React.useRef<FlatList>(null);
 
-  console.log(sortedCoffee.length);
-
-  const scrollToSelectedCategory = (index: number) => {
-    categoryRef.current!.scrollToIndex({
-      index,
-      animated: true,
-      viewPosition: 0.5,
-    });
+  const scrollToSelectedIndex = React.useCallback(
+    (ref: React.RefObject<FlatList>, index: number) => {
+      ref.current?.scrollToIndex({
+        index,
+        animated: true,
+        viewPosition: 0.5,
+      });
+    },
+    [],
+  );
+  const handleSearch = (searchText: string) => {
+    if (searchText.length !== 0) {
+      setIsSearching(true);
+      scrollToSelectedIndex(categoryRef, 0);
+      setCurrentCategory({index: 0, category: categories[0]});
+      coffeeRef.current?.scrollToOffset({offset: 0, animated: true});
+      setSortedCoffee([
+        ...CoffeeList.filter(item =>
+          item.name.toLowerCase().includes(searchText.toLowerCase()),
+        ),
+      ]);
+    } else handleSearchReset();
   };
+  const handleSearchReset = () => {
+    if (isSearching) {
+      coffeeRef.current?.scrollToOffset({
+        offset: 0,
+        animated: true,
+      });
+
+      setCurrentCategory({index: 0, category: categories[0]});
+      scrollToSelectedIndex(categoryRef, 0);
+      setSortedCoffee([...CoffeeList]);
+      setIsSearching(false);
+    }
+    searchText.length !== 0 && setSearchText('');
+  };
+  const handlePressOnCategory = (index: number, item: string) => {
+    setCurrentCategory({index, category: item});
+    setSortedCoffee([...getSortedCoffee(CoffeeList, item)]);
+    scrollToSelectedIndex(categoryRef, index);
+    coffeeRef.current?.scrollToOffset({
+      offset: 0,
+      animated: true,
+    });
+    isSearching && setIsSearching(false);
+  };
+
+  React.useEffect(() => {
+    if (BeanData.data) {
+      dispatch(setBeans(BeanData.data));
+    }
+  }, [BeanData.data]);
+
+  React.useEffect(() => {
+    if (CoffeeData.data) {
+      dispatch(setCoffee(CoffeeData.data));
+      setCategories(getCategories(CoffeeData.data));
+      setSortedCoffee([
+        ...getSortedCoffee(CoffeeData.data, currentCategory.category),
+      ]);
+      console.log('set coffee');
+    }
+  }, [CoffeeData.data]);
+
+  React.useEffect(() => {
+    const getCartState = async () => {
+      try {
+        const cart = await AsyncStorage.getItem('cart');
+        if (cart !== null) {
+          dispatch(setCartState(JSON.parse(cart)));
+        }
+      } catch (error) {
+        console.log('could not get cart +++', error);
+      }
+    };
+    getCartState();
+  }, []);
 
   return (
     <View style={styles.ScreenContainer}>
       <StatusBar backgroundColor={COLORS.primaryBlackHex} />
       <ScrollView
+        refreshControl={
+          <RefreshControl
+            refreshing={CoffeeData.isFetching}
+            onRefresh={() =>
+              queryClient.invalidateQueries({
+                queryKey: ['CoffeeList'],
+              })
+            }
+          />
+        }
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.ScrollView}>
+        contentContainerStyle={[
+          styles.ScrollView,
+          // {paddingBottom: tabBarHeight},
+        ]}>
         {/* App header */}
-        <Header />
+        <Header
+          hasProfilePhoto={true}
+          iconName="menu"
+          handlePressOnIcon={() => {}}
+        />
         <Text style={styles.title}>Find the best{'\n'}coffee for you</Text>
-
         {/* Search Input */}
         <View style={styles.inputContainer}>
           <TouchableOpacity
             onPress={() => {
-              setSortedCoffee(
-                getSortedCoffee(
-                  CoffeeList,
-                  currentCategory.category,
-                  searchText,
-                ),
-              );
-              // setSearchText('');
+              handleSearch(searchText);
             }}>
             <CustomIcon
               style={styles.inputIcon}
@@ -109,65 +228,121 @@ const HomeScreen = () => {
           </TouchableOpacity>
           <TextInput
             value={searchText}
-            onChangeText={value => setSearchText(value)}
+            onChangeText={value => {
+              setSearchText(value);
+              handleSearch(value);
+            }}
             placeholder="Find your Coffee..."
             placeholderTextColor={COLORS.primaryLightGreyHex}
             style={styles.textInput}
           />
+          {searchText.length > 0 && (
+            <TouchableOpacity onPress={() => handleSearchReset()}>
+              <CustomIcon
+                style={styles.inputIcon}
+                name="close"
+                size={FONTSIZE.size_16}
+                color={COLORS.primaryLightGreyHex}
+              />
+            </TouchableOpacity>
+          )}
         </View>
-
         {/* Category Scroller */}
-
         <FlatList
           data={categories}
           ref={categoryRef}
           horizontal={true}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.categoryScroller}
-          renderItem={({item, index}: {item: string; index: number}) => (
-            <View style={styles.categoryItemContainer} key={index.toString()}>
-              <TouchableOpacity
-                style={styles.categoryItem}
-                onPress={() => {
-                  setCurrentCategory({index, category: item});
-                  setSortedCoffee([
-                    ...getSortedCoffee(CoffeeList, item, searchText),
-                  ]);
-                  scrollToSelectedCategory(index);
-                }}>
-                <Text
-                  style={[
-                    styles.categoryText,
-                    {
-                      color:
-                        currentCategory.index === index
-                          ? COLORS.primaryOrangeHex
-                          : COLORS.primaryLightGreyHex,
-                    },
-                  ]}>
-                  {item}
-                </Text>
-                {currentCategory.index === index ? (
-                  <View style={styles.activeCategory}></View>
-                ) : null}
-              </TouchableOpacity>
-            </View>
-          )}
-        />
+          renderItem={({item, index}: {item: string; index: number}) => {
+            const isActive = currentCategory.category === item;
 
+            return (
+              <CategoryItem
+                category={item}
+                index={index}
+                handlePressOnCategory={handlePressOnCategory}
+                isActive={isActive}
+              />
+            );
+          }}
+        />
         {/* Coffee List */}
 
         <FlatList
+          ref={coffeeRef}
           horizontal
+          initialNumToRender={4}
+          maxToRenderPerBatch={3}
           showsHorizontalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.categoryText}>No coffee found</Text>
+            </View>
+          }
           data={sortedCoffee}
           contentContainerStyle={styles.coffeeList}
           keyExtractor={item => item.id}
-          renderItem={({item}) => (
-            <TouchableOpacity>
-              <CoffeeCard coffee={item} />
-            </TouchableOpacity>
-          )}
+          renderItem={({item}) => {
+            const isExistInCart = cartList.some(
+              product => product.id === item.id,
+            );
+
+            return (
+              <TouchableOpacity
+                onPress={() => {
+                  navigation.push('Details', {id: item.id, type: item.type});
+                }}>
+                <ProductCard
+                  product={item}
+                  isExistInCart={isExistInCart}
+                  navigation={navigation}
+                />
+              </TouchableOpacity>
+            );
+          }}
+        />
+        {/* Beans List*/}
+        <Text style={styles.BeansTitle}>Coffee beans</Text>
+        <FlatList
+          horizontal
+          initialNumToRender={3}
+          showsHorizontalScrollIndicator={false}
+          data={BeanData.data}
+          ListEmptyComponent={
+            BeanData.isLoading ? (
+              <View style={styles.emptyContainer}>
+                <ActivityIndicator size={'large'} />
+              </View>
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.categoryText}>No beans found</Text>
+              </View>
+            )
+          }
+          contentContainerStyle={[
+            styles.coffeeList,
+            {marginBottom: tabBarHeight},
+          ]}
+          keyExtractor={item => item.id}
+          renderItem={({item}) => {
+            const isExistInCart = cartList.some(
+              product => product.id === item.id,
+            );
+
+            return (
+              <TouchableOpacity
+                onPress={() => {
+                  navigation.push('Details', {id: item.id, type: item.type});
+                }}>
+                <ProductCard
+                  product={item}
+                  isExistInCart={isExistInCart}
+                  navigation={navigation}
+                />
+              </TouchableOpacity>
+            );
+          }}
         />
       </ScrollView>
     </View>
@@ -181,12 +356,12 @@ const styles = StyleSheet.create({
     // padding: 30,
   },
   ScrollView: {
-    flex: 1,
+    // flex: 1,
+    flexGrow: 1,
   },
   title: {
     fontSize: FONTSIZE.size_28,
     fontFamily: FONTFAMILY.poppins_semibold,
-    fontWeight: '600',
     lineHeight: SPACING.space_36,
     color: COLORS.primaryWhiteHex,
     paddingLeft: SPACING.space_30,
@@ -211,36 +386,47 @@ const styles = StyleSheet.create({
   },
   categoryScroller: {
     paddingHorizontal: SPACING.space_20,
-    marginBottom: SPACING.space_20,
-    // flex: 0,
-    // flexGrow: 0,
-    // flexShrink: 0,
+    // marginBottom: SPACING.space_20,
   },
-  categoryItemContainer: {
-    marginRight: SPACING.space_20,
-    paddingHorizontal: SPACING.space_15,
-  },
-  categoryItem: {
-    alignItems: 'center',
-  },
+  // categoryItemContainer: {
+  //   // marginRight: SPACING.space_20,
+  //   paddingHorizontal: SPACING.space_15,
+  // },
+  // categoryItem: {
+  //   alignItems: 'center',
+  // },
   categoryText: {
     fontSize: FONTSIZE.size_16,
     lineHeight: SPACING.space_20,
     fontFamily: FONTFAMILY.poppins_semibold,
+    color: COLORS.primaryLightGreyHex,
   },
-  activeCategory: {
-    width: SPACING.space_10,
-    height: SPACING.space_10,
-    borderRadius: SPACING.space_12,
-    backgroundColor: COLORS.primaryOrangeHex,
-    // alignSelf: 'center',
-    marginTop: SPACING.space_2,
-  },
+  // activeCategory: {
+  //   width: SPACING.space_10,
+  //   height: SPACING.space_10,
+  //   borderRadius: SPACING.space_12,
+  //   backgroundColor: COLORS.primaryOrangeHex,
+  //   // alignSelf: 'center',
+  //   marginTop: SPACING.space_2,
+  // },
   coffeeList: {
     paddingHorizontal: SPACING.space_30,
     paddingVertical: SPACING.space_20,
     gap: SPACING.space_20,
-    backgroundColor: 'red',
+    // backgroundColor: 'red',
+  },
+  emptyContainer: {
+    width: Dimensions.get('window').width - SPACING.space_30 * 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.space_36 * 3.33,
+  },
+  BeansTitle: {
+    fontSize: FONTSIZE.size_18,
+    marginLeft: SPACING.space_30,
+    marginTop: SPACING.space_20,
+    fontFamily: FONTFAMILY.poppins_medium,
+    color: COLORS.primaryWhiteHex,
   },
 });
 

@@ -1,24 +1,36 @@
 import React from 'react';
-import {Image, StyleSheet, Text, View} from 'react-native';
+import {Image, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {COLORS, FONTFAMILY, FONTSIZE, SPACING} from '../theme/theme';
 import CustomIcon from './CustomIcon';
 import GradientIcon from './GradientIcon';
 import ProfileIcon from './ProfileIcon';
 
 interface HeaderProps {
+  iconName: string;
+  hasProfilePhoto: boolean;
+  handlePressOnIcon?: () => void;
   title?: string;
 }
 
-const Header: React.FC<HeaderProps> = ({title}) => {
+const Header: React.FC<HeaderProps> = ({
+  title,
+  hasProfilePhoto,
+  iconName,
+  handlePressOnIcon,
+}) => {
+  console.log('!Header render');
+
   return (
     <View style={styles.container}>
-      <GradientIcon
-        name="menu"
-        color={COLORS.primaryWhiteHex}
-        size={SPACING.space_18}
-      />
+      <TouchableOpacity>
+        <GradientIcon
+          name={iconName}
+          color={COLORS.primaryWhiteHex}
+          size={FONTSIZE.size_14}
+        />
+      </TouchableOpacity>
       <Text style={styles.title}>{title}</Text>
-      <ProfileIcon />
+      {hasProfilePhoto && <ProfileIcon />}
     </View>
   );
 };
@@ -39,4 +51,10 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Header;
+export default React.memo(Header, (prevProps, nextProps) => {
+  return (
+    prevProps.title === nextProps.title &&
+    prevProps.hasProfilePhoto === nextProps.hasProfilePhoto &&
+    prevProps.iconName === nextProps.iconName
+  );
+});
