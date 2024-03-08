@@ -5,81 +5,110 @@ import Header from '../components/Header';
 import CartItem from '../components/CartItem';
 import {useDispatch, useSelector} from 'react-redux';
 import {RootState} from '../store/store';
-import {combine} from 'zustand/middleware';
 import {
   calculateFullPrice,
   decrementQuantity,
   incrementQuantity,
+  removeFromCart,
+  setQuantity,
 } from '../store/cart/cart.slice';
 import PriceWithButton from '../components/PriceWithButton';
-import {useBottomTabBarHeight} from '@react-navigation/bottom-tabs';
+import {
+  BottomTabScreenProps,
+  useBottomTabBarHeight,
+} from '@react-navigation/bottom-tabs';
+import EmptyListAnimation from '../components/EmptyListAnimation';
+import {CompositeScreenProps} from '@react-navigation/native';
+import {NativeStackScreenProps} from '@react-navigation/native-stack';
+import {RootTabParamList} from '../navigators/TabNavigator';
+import {RootStackParamList} from '../../App';
+import {IProductWithQuantity} from '../interface/data';
 
-const CartScreen = () => {
+export type CartScreenProps = CompositeScreenProps<
+  BottomTabScreenProps<RootTabParamList, 'Cart'>,
+  NativeStackScreenProps<RootStackParamList>
+>;
+
+const CartScreen: React.FC<CartScreenProps> = ({navigation}) => {
   const CoffeList = useSelector((state: RootState) => state.coffeeReducer);
   const BeanList = useSelector((state: RootState) => state.beansReducer);
   const CartState = useSelector((state: RootState) => state.cartReducer);
 
   const tabBarHeight = useBottomTabBarHeight();
-  const idInCart: string[] = React.useMemo(
-    () => CartState.cartList.map(item => item.id),
-    [CartState],
-  );
   const dispatch = useDispatch();
 
-  const productInCart = React.useMemo(() => {
-    const combineList = [...CoffeList, ...BeanList];
-
-    return combineList
-      .filter(item => {
-        return idInCart.includes(item.id);
-      })
+  const productInCart: IProductWithQuantity[] = React.useMemo(() => {
+    const filteredProductInCart: IProductWithQuantity[] = [
+      ...CoffeList,
+      ...BeanList,
+    ]
       .map(item => {
         for (let i = 0; i < CartState.cartList.length; i++) {
-          if (item.id === CartState.cartList[i].id)
+          if (item.id === CartState.cartList[i].id) {
             return {...item, ...CartState.cartList[i]};
+          }
         }
-      });
-  }, [CoffeList, BeanList, idInCart]);
+        return null; // Return null for items not found in the cart
+      })
+      .filter(item => item !== null) as IProductWithQuantity[];
 
-  const handleIncrement = React.useCallback((id: string, size: string) => {
-    dispatch(incrementQuantity({id, size}));
-    dispatch(calculateFullPrice());
-  }, []);
-  const handleDecrement = React.useCallback((id: string, size: string) => {
-    dispatch(decrementQuantity({id, size}));
-    dispatch(calculateFullPrice());
+    return filteredProductInCart;
+  }, [CoffeList, BeanList, CartState.cartList]);
+
+  const handleSetQuantity = React.useCallback(
+    (id: string, size: string, quantity: number) => {
+      dispatch(setQuantity({id, size, quantity}));
+      dispatch(calculateFullPrice());
+    },
+    [],
+  );
+
+  const handleRemove = React.useCallback((id: string) => {
+    dispatch(removeFromCart(id));
   }, []);
 
   return (
     <View style={styles.screenContainer}>
       <StatusBar backgroundColor={COLORS.primaryBlackHex} />
-      <ScrollView style={styles.ScrollViewContainer}>
-        <Header title="Cart" hasProfilePhoto={true} iconName="menu" />
-        <View style={styles.itemContainer}>
-          {productInCart.length > 0 &&
-            productInCart.map(
-              product =>
-                product && (
-                  <CartItem
-                    key={product.id.toString()}
-                    product={product}
-                    handleIncrement={handleIncrement}
-                    handleDecrement={handleDecrement}
-                  />
-                ),
-            )}
+      {productInCart.length === 0 ? (
+        <View style={styles.EmptyContainer}>
+          <Header title="Cart" hasProfilePhoto={true} iconName="menu" />
+          <EmptyListAnimation title="Your cart is empty" />
         </View>
-        {productInCart[0] && (
-          <View style={{marginBottom: tabBarHeight}}>
-            <PriceWithButton
-              price={CartState.fullPrice}
-              priceCurrency={productInCart[0].prices[0].currency}
-              textBtn="Pay"
-              handlePressOnBtn={() => {}}
-            />
+      ) : (
+        <ScrollView
+          contentContainerStyle={[styles.ScrollViewContainer]}
+          showsVerticalScrollIndicator={false}
+          style={{marginBottom: tabBarHeight}}>
+          <View>
+            <Header title="Cart" hasProfilePhoto={true} iconName="menu" />
+            <View style={styles.itemContainer}>
+              {productInCart.map(
+                product =>
+                  product && (
+                    <CartItem
+                      key={product.id.toString()}
+                      product={product}
+                      handleSetQuantity={handleSetQuantity}
+                      handleRemove={handleRemove}
+                    />
+                  ),
+              )}
+            </View>
           </View>
-        )}
-      </ScrollView>
+          <PriceWithButton
+            price={CartState.fullPrice}
+            priceCurrency={productInCart[0].prices[0].currency}
+            textBtn="Pay"
+            handlePressOnBtn={() => {
+              if (CartState.fullPrice === 0) return;
+              navigation.push('Payment', {
+                productInCart: productInCart,
+              });
+            }}
+          />
+        </ScrollView>
+      )}
     </View>
   );
 };
@@ -91,6 +120,11 @@ const styles = StyleSheet.create({
   },
   ScrollViewContainer: {
     flexGrow: 1,
+    justifyContent: 'space-between',
+  },
+  EmptyContainer: {
+    flexGrow: 1,
+    justifyContent: 'space-between',
   },
   itemContainer: {
     gap: SPACING.space_16,

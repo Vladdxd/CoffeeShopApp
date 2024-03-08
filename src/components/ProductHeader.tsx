@@ -10,25 +10,29 @@ interface ProductHeaderProps {
   iconName?: string;
   handlePressOnIcon?: () => void;
   product: IProduct;
-  isFavorites: boolean;
+  favoritesList: string[];
 }
 
 const ProductHeader: React.FC<ProductHeaderProps> = ({
   iconName,
   handlePressOnIcon,
   product,
-  isFavorites,
+  favoritesList,
 }) => {
+  const [isFavorites, setIsFavorites] = React.useState<boolean>(false);
   const dispatch = useDispatch();
-  console.log('header render');
+
+  React.useEffect(() => {
+    setIsFavorites(favoritesList.includes(product.id));
+  }, [favoritesList]);
 
   return (
     <View
       style={[
         styles.containerHeader,
-        // {
-        //   justifyContent: true ? 'space-between' : 'flex-end',
-        // },
+        {
+          justifyContent: iconName ? 'space-between' : 'flex-end',
+        },
       ]}>
       {iconName && handlePressOnIcon && (
         <TouchableOpacity

@@ -15,6 +15,7 @@ import GradientIcon from './GradientIcon';
 import {useDispatch, useSelector} from 'react-redux';
 import {addToFavorites} from '../store/favorites/favorites.slice';
 import {RootState} from '../store/store';
+import ProductHeader from './ProductHeader';
 
 interface ImageBGInfoProps {
   handlePressOnIcon?: () => void;
@@ -29,53 +30,22 @@ const ImageBGInfo: React.FC<ImageBGInfoProps> = ({
 }) => {
   const dispatch = useDispatch();
   const [showDescription, setShowDescription] = React.useState<boolean>(false);
-  const [isFavorites, setIsFavorites] = React.useState<boolean>(false);
   const favoritesList = useSelector(
     (state: RootState) => state.favoritesReducer,
   );
 
-  console.log('favoritesList', favoritesList);
-
-  React.useEffect(() => {
-    setIsFavorites(favoritesList.includes(product.id));
-  });
   return (
     <>
       <ImageBackground
         style={styles.imageContainer}
-        source={require('../assets/coffee_assets/americano/portrait/americano_pic_1_portrait.png')}>
-        <View
-          style={[
-            styles.containerHeader,
-            {
-              justifyContent: iconName ? 'space-between' : 'flex-end',
-            },
-          ]}>
-          {iconName && handlePressOnIcon && (
-            <TouchableOpacity
-              onPress={() => {
-                handlePressOnIcon();
-              }}>
-              <GradientIcon
-                name={iconName}
-                color={COLORS.primaryWhiteHex}
-                size={FONTSIZE.size_16}
-              />
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity
-            onPress={() => {
-              dispatch(addToFavorites(product));
-            }}>
-            <GradientIcon
-              name={'like'}
-              color={
-                isFavorites ? COLORS.primaryRedHex : COLORS.primaryWhiteHex
-              }
-              size={FONTSIZE.size_16}
-            />
-          </TouchableOpacity>
-        </View>
+        source={{uri: product.imagelink_square}}
+        resizeMode="cover">
+        <ProductHeader
+          favoritesList={favoritesList}
+          product={product}
+          iconName={iconName}
+          handlePressOnIcon={handlePressOnIcon}
+        />
         <View style={styles.infoContainer}>
           <View style={styles.overlayContainer}>
             <View style={styles.infoContainerRow}>
@@ -230,9 +200,5 @@ const styles = StyleSheet.create({
 });
 
 export default React.memo(ImageBGInfo, (prevProps, nextProps) => {
-  return (
-    prevProps.product.name === nextProps.product.name &&
-    prevProps.product.special_ingredient ===
-      nextProps.product.special_ingredient
-  );
+  return prevProps.product.id === nextProps.product.id;
 });

@@ -15,7 +15,6 @@ const CategoryItem: React.FC<CategoryItemProps> = ({
   handlePressOnCategory,
   isActive,
 }) => {
-  // console.log('category render');
   return (
     <View style={styles.categoryItemContainer} key={index.toString()}>
       <TouchableOpacity

@@ -13,19 +13,19 @@ import IconBtn from './IconBtn';
 import {calculateFullPrice} from '../store/cart/cart.slice';
 import {useDispatch} from 'react-redux';
 import SizeRow from './SizeRow';
+import CustomIcon from './CustomIcon';
+import CartItemHeader from './CartItemHeader';
 
-interface CartItemProps {
+export interface CartItemProps {
   product: IProductWithQuantity;
-  handleIncrement: (id: string, size: string) => void;
-  handleDecrement: (id: string, size: string) => void;
+  handleSetQuantity: (id: string, size: string, quantity: number) => void;
+  handleRemove: (id: string) => void;
 }
 const CartItem: React.FC<CartItemProps> = ({
   product,
-  handleIncrement,
-  handleDecrement,
+  handleSetQuantity,
+  handleRemove,
 }) => {
-  console.log('!CartItem render');
-  const dispatch = useDispatch();
   return (
     <LinearGradient
       key={product.id}
@@ -33,6 +33,14 @@ const CartItem: React.FC<CartItemProps> = ({
       start={{x: 0, y: 0}}
       end={{x: 1, y: 1}}
       style={styles.linearGradientContainer}>
+      {/* <View style={styles.removeBtn}>
+        <TouchableOpacity
+          onPress={() => {
+            handleRemove(product.id);
+          }}>
+          <CustomIcon name="close" size={FONTSIZE.size_16} />
+        </TouchableOpacity>
+      </View>
       <View style={styles.infoContainer}>
         <Image
           style={styles.imageWrapper}
@@ -48,14 +56,18 @@ const CartItem: React.FC<CartItemProps> = ({
             <Text style={styles.roasted}>{product.roasted}</Text>
           </View>
         </View>
-      </View>
+      </View> */}
+      <CartItemHeader
+        product={product}
+        handleRemove={handleRemove}
+        handleSetQuantity={handleSetQuantity}
+      />
       <View style={styles.sizeContainer}>
         {product.prices.map(el => (
           <SizeRow
+            handleSetQuantity={handleSetQuantity}
             key={el.size}
             el={el}
-            handleDecrement={handleDecrement}
-            handleIncrement={handleIncrement}
             product={product}
           />
         ))}
@@ -109,67 +121,26 @@ const styles = StyleSheet.create({
     marginTop: SPACING.space_10,
     paddingHorizontal: SPACING.space_4,
   },
-  // sizeItem: {
-  //   flexDirection: 'row',
-  //   alignItems: 'center',
-  //   // justifyContent: 'space-between',
-  //   gap: SPACING.space_18,
-  //   marginBottom: SPACING.space_8,
-  // },
-  // currentSizeContainer: {
-  //   backgroundColor: COLORS.primaryBlackHex,
-  //   borderRadius: BORDERRADIUS.radius_10,
-  //   height: SPACING.space_36,
-  //   alignItems: 'center',
-  //   justifyContent: 'center',
-  //   minWidth: SPACING.space_36 * 2,
-  // },
-  // priceContainer: {
-  //   flexDirection: 'row',
-  //   alignItems: 'center',
-  //   justifyContent: 'space-around',
-  //   // gap: SPACING.space_18,
-  //   flexGrow: 1,
-  //   // marginRight: SPACING.space_18,
-  // },
-  // currentSize: {
-  //   fontFamily: FONTFAMILY.poppins_medium,
-  //   fontSize: FONTSIZE.size_16,
-  //   color: COLORS.primaryWhiteHex,
-  // },
-  // priceCurrency: {
-  //   fontFamily: FONTFAMILY.poppins_semibold,
-  //   fontSize: FONTSIZE.size_16,
-  //   color: COLORS.primaryOrangeHex,
-  // },
-  // price: {
-  //   color: COLORS.primaryWhiteHex,
-  // },
-  // quantityContainer: {
-  //   flexDirection: 'row',
-  //   alignItems: 'center',
-  //   // justifyContent: 'center',
-  //   gap: SPACING.space_18,
-  // },
-  // currentQuantityContainer: {
-  //   backgroundColor: COLORS.primaryBlackHex,
-  //   borderRadius: BORDERRADIUS.radius_10,
-  //   height: SPACING.space_30,
-  //   minWidth: SPACING.space_30 * 1.66,
-  //   paddingHorizontal: SPACING.space_20,
-  //   alignItems: 'center',
-  //   justifyContent: 'center',
-  //   borderWidth: 2,
-  //   borderColor: COLORS.primaryOrangeHex,
-  // },
-  // currentQuantity: {
-  //   fontFamily: FONTFAMILY.poppins_semibold,
-  //   fontSize: FONTSIZE.size_16,
-  //   color: COLORS.primaryWhiteHex,
-  // },
+  removeBtn: {
+    position: 'absolute',
+    top: SPACING.space_15,
+    right: SPACING.space_15,
+  },
 });
 
-export default React.memo(
-  CartItem,
-  (prev, next) => JSON.stringify(prev.product) === JSON.stringify(next.product),
-);
+export default React.memo(CartItem, (prev, next) => {
+  if (prev.product.id !== next.product.id) {
+    return false;
+  }
+
+  for (let i = 0; i < prev.product.prices.length; i++) {
+    if (prev.product.prices[i].size !== next.product.prices[i].size) {
+      return false;
+    }
+    if (prev.product.prices[i].quantity !== next.product.prices[i].quantity) {
+      return false;
+    }
+  }
+
+  return true;
+});

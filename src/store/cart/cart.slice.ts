@@ -1,7 +1,6 @@
 import {createSlice} from '@reduxjs/toolkit';
 import type {PayloadAction} from '@reduxjs/toolkit';
-import {IProduct, IProductWithQuantity} from '../../interface/data';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import {IProduct} from '../../interface/data';
 
 export interface IProductWithSize extends IProduct {
   size?: string;
@@ -21,7 +20,7 @@ export interface CartState {
   fullPrice: number;
 }
 
-const initialState: CartState = {
+export const initialState: CartState = {
   cartList: [],
   fullPrice: 0,
 };
@@ -30,8 +29,30 @@ const cartSlice = createSlice({
   name: 'cart',
   initialState,
   reducers: {
+    setQuantity: (
+      state,
+      action: PayloadAction<{id: string; size: string; quantity: number}>,
+    ) => {
+      const currentProduct = state.cartList.find(
+        item => item.id === action.payload.id,
+      );
+      if (currentProduct) {
+        const currentPrice = currentProduct.prices.find(
+          price => price.size === action.payload.size,
+        );
+        if (currentPrice) {
+          currentPrice.quantity = action.payload.quantity;
+        }
+      }
+    },
     setCartState: (state, action: PayloadAction<CartState>) => {
       return action.payload;
+    },
+    removeFromCart: (state, action: PayloadAction<string>) => {
+      const currentProduct = state.cartList.findIndex(
+        item => item.id === action.payload,
+      );
+      currentProduct !== -1 && state.cartList.splice(currentProduct, 1);
     },
     addToCart: (state, action: PayloadAction<IProductWithSize>) => {
       const isExist = state.cartList.some(
@@ -56,15 +77,6 @@ const cartSlice = createSlice({
           id: action.payload.id,
           prices,
         });
-        console.log(state.fullPrice);
-
-        AsyncStorage.setItem('cart', JSON.stringify(state))
-          .then(() => {
-            console.log('set Cart');
-          })
-          .catch(err => {
-            console.error('Ошибка при сохранении cart в AsyncStorage:', err);
-          });
       } else {
         const currentProduct = state.cartList.find(
           item => item.id === action.payload.id,
@@ -74,41 +86,11 @@ const cartSlice = createSlice({
           currentProduct.prices.forEach(price => {
             if (price.size === action.payload.size) price.quantity++;
           });
-
-        AsyncStorage.setItem('cart', JSON.stringify(state))
-          .then(() => {
-            console.log('set Cart');
-          })
-          .catch(err => {
-            console.error('Ошибка при сохранении cart в AsyncStorage:', err);
-          });
       }
-      // AsyncStorage.removeItem('cart');
     },
     incrementQuantity: (
       state,
-      action: PayloadAction<{id: string; size: string}>,
-    ) => {
-      const currentProduct = state.cartList.find(
-        item => item.id === action.payload.id,
-      );
-      currentProduct &&
-        action.payload &&
-        currentProduct.prices.forEach(price => {
-          if (price.size === action.payload.size) price.quantity++;
-        });
-
-      AsyncStorage.setItem('cart', JSON.stringify(state))
-        .then(() => {
-          console.log('set Cart');
-        })
-        .catch(err => {
-          console.error('Ошибка при сохранении cart в AsyncStorage:', err);
-        });
-    },
-    decrementQuantity: (
-      state,
-      action: PayloadAction<{id: string; size: string}>,
+      action: PayloadAction<{id: string; size: string; quantity: number}>,
     ) => {
       const currentProduct = state.cartList.find(
         item => item.id === action.payload.id,
@@ -117,15 +99,28 @@ const cartSlice = createSlice({
         action.payload &&
         currentProduct.prices.forEach(price => {
           if (price.size === action.payload.size)
-            if (price.quantity > 0) price.quantity--;
+            price.quantity += action.payload.quantity;
         });
-      AsyncStorage.setItem('cart', JSON.stringify(state))
-        .then(() => {
-          console.log('set Cart');
-        })
-        .catch(err => {
-          console.error('Ошибка при сохранении cart в AsyncStorage:', err);
-        });
+    },
+    decrementQuantity: (
+      state,
+      action: PayloadAction<{id: string; size: string; quantity: number}>,
+    ) => {
+      const currentProduct = state.cartList.find(
+        item => item.id === action.payload.id,
+      );
+      if (currentProduct) {
+        const currentPrice = currentProduct.prices.find(
+          price => price.size === action.payload.size,
+        );
+        if (currentPrice) {
+          if (currentPrice.quantity <= action.payload.quantity) {
+            currentPrice.quantity = 0;
+          } else {
+            currentPrice.quantity -= action.payload.quantity;
+          }
+        }
+      }
     },
     calculateFullPrice: state => {
       if (state.cartList.length > 0) {
@@ -146,6 +141,8 @@ export const {
   incrementQuantity,
   decrementQuantity,
   calculateFullPrice,
+  removeFromCart,
+  setQuantity,
 } = cartSlice.actions;
 
 export default cartSlice.reducer;

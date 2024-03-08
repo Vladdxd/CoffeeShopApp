@@ -18,19 +18,23 @@ const Header: React.FC<HeaderProps> = ({
   iconName,
   handlePressOnIcon,
 }) => {
-  console.log('!Header render');
-
   return (
-    <View style={styles.container}>
-      <TouchableOpacity>
+    <View
+      style={[
+        styles.container,
+        // {justifyContent: hasProfilePhoto ? 'space-between' : 'flex-start'},
+      ]}>
+      <TouchableOpacity onPress={handlePressOnIcon}>
         <GradientIcon
           name={iconName}
           color={COLORS.primaryWhiteHex}
           size={FONTSIZE.size_14}
         />
       </TouchableOpacity>
-      <Text style={styles.title}>{title}</Text>
-      {hasProfilePhoto && <ProfileIcon />}
+      <Text style={[styles.title]}>{title}</Text>
+      <View style={{opacity: hasProfilePhoto ? 1 : 0}}>
+        <ProfileIcon />
+      </View>
     </View>
   );
 };
@@ -48,6 +52,7 @@ const styles = StyleSheet.create({
     fontSize: FONTSIZE.size_20,
     lineHeight: 36,
     fontWeight: '600',
+    textAlign: 'center',
   },
 });
 

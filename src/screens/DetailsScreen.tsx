@@ -44,7 +44,14 @@ const DetailsScreen: React.FC<DetailsScreenProps> = ({navigation, route}) => {
     }
   }, [data]);
 
-  if (isFetching) return <Text>Loading...</Text>;
+  if (isFetching)
+    return (
+      <View style={styles.ScreenContainer}>
+        <Text style={{textAlign: 'center', color: COLORS.primaryOrangeHex}}>
+          Loading...
+        </Text>
+      </View>
+    );
   if (!data) return <Text>404</Text>;
 
   return (

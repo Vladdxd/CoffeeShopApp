@@ -14,8 +14,6 @@ const DetailIcon: React.FC<DetailIconProps> = ({
   content,
   iconSize,
 }) => {
-  console.log('!DetailIcon render');
-
   return (
     <View style={styles.container}>
       <View style={styles.wrapper}>

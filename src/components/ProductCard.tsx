@@ -6,6 +6,8 @@ import {
   Dimensions,
   ImageBackground,
   TouchableOpacity,
+  ImageSourcePropType,
+  ToastAndroid,
 } from 'react-native';
 import {IProduct} from '../interface/data';
 import LinearGradient from 'react-native-linear-gradient';
@@ -18,15 +20,9 @@ import {
 } from '../theme/theme';
 import CustomIcon from './CustomIcon';
 import IconBtn from './IconBtn';
-import {useSelector, useDispatch} from 'react-redux';
-import {
-  addToCart,
-  calculateFullPrice,
-  setCartState,
-} from '../store/cart/cart.slice';
-import {RootState} from '../store/store';
+import {useDispatch} from 'react-redux';
+import {addToCart, calculateFullPrice} from '../store/cart/cart.slice';
 import {HomeScreenProps} from '../screens/HomeScreen';
-import {createAsyncThunk} from '@reduxjs/toolkit';
 
 const CARD_WIDTH = Dimensions.get('window').width * 0.32;
 
@@ -34,6 +30,7 @@ interface ProductCardProps {
   product: IProduct;
   isExistInCart: boolean;
   navigation: HomeScreenProps['navigation'];
+  // imageLink: ImageSourcePropType;
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({
@@ -43,14 +40,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
 }) => {
   const dispatch = useDispatch();
 
-  console.log('productCard render');
-
-  // const cartList = useSelector((state: RootState) => state.cartReducer);
-
-  // console.log(typeof product.imagelink_square);
-  // console.log(product.imagelink_square);
-
-  // const test: any = require(product.imagelink_square);
   return (
     <LinearGradient
       colors={[COLORS.primaryGreyHex, COLORS.primaryBlackHex]}
@@ -58,7 +47,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
       end={{x: 1, y: 1}}
       style={styles.linearGradientContainer}>
       <ImageBackground
-        source={require('../assets/coffee_assets/americano/square/americano_pic_1_square.png')}
+        source={{
+          uri: product.imagelink_square,
+        }}
         resizeMode="cover"
         style={styles.cardImage}>
         <View style={styles.ratingContainer}>
@@ -94,6 +85,11 @@ const ProductCard: React.FC<ProductCardProps> = ({
             onPress={() => {
               dispatch(addToCart(product));
               dispatch(calculateFullPrice());
+              ToastAndroid.showWithGravity(
+                `${product.name} added to cart`,
+                ToastAndroid.SHORT,
+                ToastAndroid.BOTTOM,
+              );
             }}>
             <IconBtn
               name="add"

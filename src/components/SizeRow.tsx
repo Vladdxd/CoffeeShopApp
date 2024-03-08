@@ -9,6 +9,7 @@ import {
 } from '../theme/theme';
 import IconBtn from './IconBtn';
 import {IProductWithQuantity} from '../interface/data';
+import debounce from 'lodash.debounce';
 
 interface SizeRowProps {
   el: {
@@ -18,23 +19,37 @@ interface SizeRowProps {
     quantity: number;
   };
   product: IProductWithQuantity;
-  handleIncrement: (id: string, size: string) => void;
-  handleDecrement: (id: string, size: string) => void;
+  handleSetQuantity: (id: string, size: string, quantity: number) => void;
 }
 
-const SizeRow: React.FC<SizeRowProps> = ({
-  el,
-  product,
-  handleIncrement,
-  handleDecrement,
-}) => {
-  console.log('SizeRow render');
+const SizeRow: React.FC<SizeRowProps> = ({el, product, handleSetQuantity}) => {
+  const [quantity, setQuantity] = React.useState<number>(el.quantity);
+
+  const handleDebounced = React.useCallback(
+    debounce(value => {
+      handleSetQuantity(product.id, el.size, value);
+    }, 500),
+    [],
+  );
 
   return (
     <View key={el.size} style={styles.sizeItem}>
       <View style={styles.priceContainer}>
         <View style={styles.currentSizeContainer}>
-          <Text style={styles.currentSize}>{el.size}</Text>
+          <Text
+            style={[
+              styles.currentSize,
+              {
+                fontSize:
+                  product.type === 'Bean' ? FONTSIZE.size_10 : FONTSIZE.size_16,
+                color:
+                  product.type === 'Bean'
+                    ? COLORS.secondaryLightGreyHex
+                    : COLORS.primaryWhiteHex,
+              },
+            ]}>
+            {el.size}
+          </Text>
         </View>
         <Text style={styles.priceCurrency}>
           {el.currency + ' '}
@@ -44,7 +59,11 @@ const SizeRow: React.FC<SizeRowProps> = ({
       <View style={styles.quantityContainer}>
         <TouchableOpacity
           onPress={() => {
-            handleDecrement(product.id, el.size);
+            setQuantity(prevValue => {
+              if (prevValue === 0) return 0;
+              handleDebounced(prevValue - 1);
+              return prevValue - 1;
+            });
           }}>
           <IconBtn
             name="minus"
@@ -53,11 +72,14 @@ const SizeRow: React.FC<SizeRowProps> = ({
           />
         </TouchableOpacity>
         <View style={styles.currentQuantityContainer}>
-          <Text style={styles.currentQuantity}>{el.quantity}</Text>
+          <Text style={styles.currentQuantity}>{quantity}</Text>
         </View>
         <TouchableOpacity
           onPress={() => {
-            handleIncrement(product.id, el.size);
+            setQuantity(prevValue => {
+              handleDebounced(prevValue + 1);
+              return prevValue + 1;
+            });
           }}>
           <IconBtn
             name="add"
@@ -96,8 +118,6 @@ const styles = StyleSheet.create({
   },
   currentSize: {
     fontFamily: FONTFAMILY.poppins_medium,
-    fontSize: FONTSIZE.size_16,
-    color: COLORS.primaryWhiteHex,
   },
   priceCurrency: {
     fontFamily: FONTFAMILY.poppins_semibold,

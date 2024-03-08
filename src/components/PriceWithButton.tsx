@@ -15,7 +15,6 @@ const PriceWithButton: React.FC<PriceWithButtonProps> = ({
   textBtn,
   handlePressOnBtn,
 }) => {
-  console.log('PriceWithButton render');
 
   return (
     <View style={styles.container}>
@@ -48,7 +47,8 @@ const styles = StyleSheet.create({
   },
   containerPrice: {
     alignItems: 'center',
-    width: 80,
+    minWidth: 80,
+    flexWrap: 'nowrap',
   },
   priceCaption: {
     fontSize: FONTSIZE.size_12,
@@ -73,6 +73,7 @@ const styles = StyleSheet.create({
     // maxWidth: '69%',
     // justifyContent: 'center',
     // alignItems: 'center',
+    // flexShrink: 1,
     flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',

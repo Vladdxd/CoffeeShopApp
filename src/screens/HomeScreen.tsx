@@ -11,8 +11,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-
-// import {useStore} from '../store/store';
 import {COLORS, FONTFAMILY, FONTSIZE, SPACING} from '../theme/theme';
 import {IProduct} from '../interface/data';
 import {Dimensions} from 'react-native';
@@ -33,8 +31,6 @@ import {CompositeScreenProps} from '@react-navigation/native';
 import type {RootState} from '../store/store';
 import {useSelector, useDispatch} from 'react-redux';
 import CategoryItem from '../components/CategoryItem';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import {setCartState} from '../store/cart/cart.slice';
 import {useQuery, useQueryClient} from '@tanstack/react-query';
 import {Product} from '../services/product/product.service';
 import {setCoffee} from '../store/coffee/coffee.slice';
@@ -44,8 +40,6 @@ export type HomeScreenProps = CompositeScreenProps<
   BottomTabScreenProps<RootTabParamList, 'Home'>,
   NativeStackScreenProps<RootStackParamList>
 >;
-
-// TODO - FavoriteList, JSON, React.memo(SizeContainer)
 
 const getCategories = (list: IProduct[]): string[] => {
   let temp: {
@@ -165,23 +159,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({navigation}) => {
       setSortedCoffee([
         ...getSortedCoffee(CoffeeData.data, currentCategory.category),
       ]);
-      console.log('set coffee');
     }
   }, [CoffeeData.data]);
-
-  React.useEffect(() => {
-    const getCartState = async () => {
-      try {
-        const cart = await AsyncStorage.getItem('cart');
-        if (cart !== null) {
-          dispatch(setCartState(JSON.parse(cart)));
-        }
-      } catch (error) {
-        console.log('could not get cart +++', error);
-      }
-    };
-    getCartState();
-  }, []);
 
   return (
     <View style={styles.ScreenContainer}>
@@ -283,7 +262,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({navigation}) => {
           data={sortedCoffee}
           contentContainerStyle={styles.coffeeList}
           keyExtractor={item => item.id}
-          renderItem={({item}) => {
+          renderItem={({item}: {item: IProduct}) => {
             const isExistInCart = cartList.some(
               product => product.id === item.id,
             );
@@ -294,6 +273,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({navigation}) => {
                   navigation.push('Details', {id: item.id, type: item.type});
                 }}>
                 <ProductCard
+                  // imageLink={require(item.imagelink_square)}
                   product={item}
                   isExistInCart={isExistInCart}
                   navigation={navigation}
@@ -336,6 +316,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({navigation}) => {
                   navigation.push('Details', {id: item.id, type: item.type});
                 }}>
                 <ProductCard
+                  // imageLink={require(item.imagelink_square)}
                   product={item}
                   isExistInCart={isExistInCart}
                   navigation={navigation}
@@ -353,10 +334,8 @@ const styles = StyleSheet.create({
   ScreenContainer: {
     flex: 1,
     backgroundColor: COLORS.primaryBlackHex,
-    // padding: 30,
   },
   ScrollView: {
-    // flex: 1,
     flexGrow: 1,
   },
   title: {
@@ -386,29 +365,13 @@ const styles = StyleSheet.create({
   },
   categoryScroller: {
     paddingHorizontal: SPACING.space_20,
-    // marginBottom: SPACING.space_20,
   },
-  // categoryItemContainer: {
-  //   // marginRight: SPACING.space_20,
-  //   paddingHorizontal: SPACING.space_15,
-  // },
-  // categoryItem: {
-  //   alignItems: 'center',
-  // },
   categoryText: {
     fontSize: FONTSIZE.size_16,
     lineHeight: SPACING.space_20,
     fontFamily: FONTFAMILY.poppins_semibold,
     color: COLORS.primaryLightGreyHex,
   },
-  // activeCategory: {
-  //   width: SPACING.space_10,
-  //   height: SPACING.space_10,
-  //   borderRadius: SPACING.space_12,
-  //   backgroundColor: COLORS.primaryOrangeHex,
-  //   // alignSelf: 'center',
-  //   marginTop: SPACING.space_2,
-  // },
   coffeeList: {
     paddingHorizontal: SPACING.space_30,
     paddingVertical: SPACING.space_20,
